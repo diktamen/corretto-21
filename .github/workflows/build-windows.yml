@@ -74,7 +74,7 @@ on:
         type: string
         default: 'product-bundles test-bundles'
       debug-levels:
-        description: 'Debug levels to build (JSON array format)'
+        description: 'Debug levels to build (JSON array format, e.g., [ "debug", "release" ] or [ "release" ])'
         required: false
         type: string
         default: '[ "debug", "release" ]'
