@@ -1560,6 +1560,15 @@ int VMError::prepare_log_file(const char* pattern, const char* default_pattern, 
 
   // If possible, use specified pattern to construct log file name
   if (pattern != nullptr) {
+#if defined(_WINDOWS)
+    // Expand %ENVVAR% references (e.g. %LOCALAPPDATA%) so that paths
+    // from jpackage .cfg files resolve on the end user's machine.
+    char expanded[JVM_MAXPATHLEN];
+    DWORD len = ExpandEnvironmentStrings(pattern, expanded, sizeof(expanded));
+    if (len > 0 && len < sizeof(expanded)) {
+      pattern = expanded;
+    }
+#endif
     fd = expand_and_open(pattern, overwrite_existing, buf, buflen, 0);
   }
 

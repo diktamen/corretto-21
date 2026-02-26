@@ -1285,12 +1285,21 @@ void os::check_dump_limit(char* buffer, size_t buffsz) {
 #endif
 
   if (status) {
-    const char* cwd = get_current_directory(nullptr, 0);
-    int pid = current_process_id();
-    if (cwd != nullptr) {
-      jio_snprintf(buffer, buffsz, "%s\\hs_err_pid%u.mdmp", cwd, pid);
+    if (CreateCoredumpFile != nullptr) {
+      // User specified -XX:CreateCoredumpFile=<path>
+      // First expand %ENVVAR% via Windows API, then expand %p to pid
+      char tmp[JVM_MAXPATHLEN];
+      DWORD len = ExpandEnvironmentStrings(CreateCoredumpFile, tmp, sizeof(tmp));
+      const char* expanded = (len > 0 && len < sizeof(tmp)) ? tmp : CreateCoredumpFile;
+      Arguments::copy_expand_pid(expanded, strlen(expanded), buffer, buffsz);
     } else {
-      jio_snprintf(buffer, buffsz, ".\\hs_err_pid%u.mdmp", pid);
+      const char* cwd = get_current_directory(nullptr, 0);
+      int pid = current_process_id();
+      if (cwd != nullptr) {
+        jio_snprintf(buffer, buffsz, "%s\\hs_err_pid%u.mdmp", cwd, pid);
+      } else {
+        jio_snprintf(buffer, buffsz, ".\\hs_err_pid%u.mdmp", pid);
+      }
     }
 
     if (dumpFile == nullptr &&

@@ -2660,7 +2660,19 @@ void HeapDumper::dump_heap(bool oome) {
     if (HeapDumpPath == nullptr || HeapDumpPath[0] == '\0') {
       // HeapDumpPath=<file> not specified
     } else {
+#if defined(_WINDOWS)
+      // Expand %ENVVAR% references (e.g. %LOCALAPPDATA%) so that paths
+      // from jpackage .cfg files resolve on the end user's machine.
+      char expanded_heap_path[JVM_MAXPATHLEN];
+      DWORD elen = ExpandEnvironmentStrings(HeapDumpPath, expanded_heap_path, sizeof(expanded_heap_path));
+      if (elen > 0 && elen < sizeof(expanded_heap_path)) {
+        strcpy(base_path, expanded_heap_path);
+      } else {
+        strcpy(base_path, HeapDumpPath);
+      }
+#else
       strcpy(base_path, HeapDumpPath);
+#endif
       // check if the path is a directory (must exist)
       DIR* dir = os::opendir(base_path);
       if (dir == nullptr) {
