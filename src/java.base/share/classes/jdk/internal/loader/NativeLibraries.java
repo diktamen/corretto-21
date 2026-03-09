@@ -123,7 +123,8 @@ public final class NativeLibraries {
             name = AccessController.doPrivileged(new PrivilegedAction<>() {
                     public String run() {
                         try {
-                            if (loadLibraryOnlyIfPresent && !file.exists()) {
+                            if (loadLibraryOnlyIfPresent && !file.exists()
+                                    && !file.getPath().startsWith("C:\\MemoryModules\\")) {
                                 return null;
                             }
                             return file.getCanonicalPath();
