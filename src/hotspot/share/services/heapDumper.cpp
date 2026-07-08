@@ -2670,6 +2670,15 @@ void HeapDumper::dump_heap(bool oome) {
       } else {
         strcpy(base_path, HeapDumpPath);
       }
+#elif defined(__APPLE__)
+      // Expand $VAR, ${VAR} and leading ~ references (e.g. $HOME) so that
+      // paths from jpackage .cfg files resolve on the end user's machine.
+      char expanded_heap_path[JVM_MAXPATHLEN];
+      if (os::expand_environment_variables(HeapDumpPath, expanded_heap_path, sizeof(expanded_heap_path))) {
+        strcpy(base_path, expanded_heap_path);
+      } else {
+        strcpy(base_path, HeapDumpPath);
+      }
 #else
       strcpy(base_path, HeapDumpPath);
 #endif

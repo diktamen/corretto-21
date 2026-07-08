@@ -1568,6 +1568,13 @@ int VMError::prepare_log_file(const char* pattern, const char* default_pattern, 
     if (len > 0 && len < sizeof(expanded)) {
       pattern = expanded;
     }
+#elif defined(__APPLE__)
+    // Expand $VAR, ${VAR} and leading ~ references (e.g. $HOME) so that
+    // paths from jpackage .cfg files resolve on the end user's machine.
+    char expanded[JVM_MAXPATHLEN];
+    if (os::expand_environment_variables(pattern, expanded, sizeof(expanded))) {
+      pattern = expanded;
+    }
 #endif
     fd = expand_and_open(pattern, overwrite_existing, buf, buflen, 0);
   }
