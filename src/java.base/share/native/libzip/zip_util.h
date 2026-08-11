@@ -32,6 +32,13 @@
 
 #include "jni.h"
 
+/* The in-house obfuscation transform is undone in the read layer in
+ * zip_util.c, which an mmapped CEN bypasses. Fail the build rather than
+ * silently hand back still-transformed bytes. */
+#ifdef USE_MMAP
+#error "USE_MMAP is incompatible with the obfuscation transform in this JDK. See dl_apply() in zip_util.c and revisit the transform before enabling it."
+#endif
+
 /*
  * Header signatures
  */
@@ -234,6 +241,9 @@ typedef struct jzfile {   /* Zip file */
     jint metacount;       /* number of slots in metanames array */
     jlong lastModified;   /* last modified time */
     jlong locpos;         /* position of first LOC header (usually 0) */
+    jboolean xored;       /* if the in-house obfuscation transform is applied to
+                             this file's bytes; decided at open from the first
+                             bytes. See dl_detect()/dl_apply() in zip_util.c. */
 } jzfile;
 
 /*
