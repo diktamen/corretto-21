@@ -207,7 +207,8 @@ AC_DEFUN_ONCE([LIB_SETUP_MISC_LIBS],
   AC_SUBST(LIBDL)
   LIBS="$save_LIBS"
 
-  # Control if libzip can use mmap. Available for purposes of overriding.
-  LIBZIP_CAN_USE_MMAP=true
+  # The in-house obfuscation transform in libzip depends on read paths that
+  # USE_MMAP bypasses. Keep mmap disabled for this build.
+  LIBZIP_CAN_USE_MMAP=false
   AC_SUBST(LIBZIP_CAN_USE_MMAP)
 ])
