@@ -37,6 +37,19 @@ package java.util.zip;
  */
 final class JarTransform {
 
+    /**
+     * Version of the transform this runtime implements, as advertised in the
+     * {@code diktamen.archive.transform} system property. Bump it if the key or
+     * the scheme changes, so a client can tell whether the artifacts it would be
+     * served are ones this runtime can actually read.
+     *
+     * <p>{@code jdk.internal.util.SystemProps}, which publishes the property,
+     * cannot reference this constant -- this class is package-private to
+     * java.util.zip. The two are kept in agreement by
+     * {@code test/jdk/java/util/zip/ObfuscatedArchive.java}.
+     */
+    static final String VERSION = "v1";
+
     /** Key length in bytes. A power of two so producers cannot misalign on a
      *  chunk boundary as long as their chunk size is a multiple of it. */
     static final int KEY_LEN = 32;

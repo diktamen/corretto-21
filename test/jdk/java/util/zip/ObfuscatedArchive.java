@@ -194,6 +194,45 @@ public class ObfuscatedArchive {
         }
     }
 
+    /** Must match JarTransform.VERSION and the value SystemProps publishes. */
+    private static final String EXPECTED_VERSION = "v1";
+
+    /**
+     * Verifies the capability property is declared with putIfAbsent rather than
+     * put, i.e. that a command-line -D beats the built-in value. Support relies
+     * on this to turn the feature off on a customer machine.
+     */
+    private static void checkPropertyIsOverridable() throws Exception {
+        String home = System.getProperty("test.jdk", System.getProperty("java.home"));
+        Path java = Path.of(home, "bin", "java");
+        if (!Files.exists(java)) {
+            java = Path.of(home, "bin", "java.exe");
+        }
+        String override = "off-for-test";
+        ProcessBuilder pb = new ProcessBuilder(java.toString(),
+                "-Ddiktamen.archive.transform=" + override,
+                "-cp", System.getProperty("test.classes", "."),
+                PropertyEcho.class.getName());
+        pb.redirectErrorStream(true);
+        Process p = pb.start();
+        String out = new String(p.getInputStream().readAllBytes(),
+                                StandardCharsets.UTF_8).trim();
+        int rc = p.waitFor();
+        if (rc != 0 || !out.contains(override)) {
+            throw new RuntimeException("-D did not override the advertised"
+                    + " version (exit " + rc + "): " + out
+                    + " -- SystemProps must use putIfAbsent, not put, so support"
+                    + " can disable the feature on a customer machine");
+        }
+    }
+
+    /** Helper main class for {@link #checkPropertyIsOverridable}. */
+    public static final class PropertyEcho {
+        public static void main(String[] args) {
+            System.out.println(System.getProperty("diktamen.archive.transform"));
+        }
+    }
+
     /** Main class of the jar built by {@link #checkLauncher}. */
     public static final class Child {
         public static void main(String[] args) {
@@ -333,6 +372,30 @@ public class ObfuscatedArchive {
             //    between the Java and launcher implementations.
             checkLauncher(dir);
             System.out.println("ok   launcher runs -jar against a transformed archive");
+
+            // 6. The capability property must be present and must agree with what
+            //    the runtime can actually do. A client uses it to decide whether
+            //    to ask a server for transformed artifacts, so a build that reads
+            //    them but forgets the property would silently lose obfuscation,
+            //    and one that advertises the property but cannot read them would
+            //    leave clients unable to load anything. Step 2 above already
+            //    proved the reading half, so reaching here means both hold.
+            String advertised = System.getProperty("diktamen.archive.transform");
+            if (!EXPECTED_VERSION.equals(advertised)) {
+                throw new RuntimeException("system property"
+                        + " diktamen.archive.transform is \"" + advertised + "\","
+                        + " expected \"" + EXPECTED_VERSION + "\" -- it is set in"
+                        + " jdk/internal/util/SystemProps.java and must match"
+                        + " JarTransform.VERSION");
+            }
+            System.out.println("ok   advertises diktamen.archive.transform="
+                               + advertised + " and can read what that promises");
+
+            // The property is putIfAbsent, so -D must win: that is what lets
+            // support disable the feature on a customer machine without a
+            // separate switch.
+            checkPropertyIsOverridable();
+            System.out.println("ok   -D overrides the advertised version");
 
             System.out.println("PASS");
         } finally {
