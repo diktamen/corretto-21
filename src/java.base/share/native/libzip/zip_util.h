@@ -32,13 +32,6 @@
 
 #include "jni.h"
 
-/* The in-house obfuscation transform is undone in the read layer in
- * zip_util.c, which an mmapped CEN bypasses. Fail the build rather than
- * silently hand back still-transformed bytes. */
-#ifdef USE_MMAP
-#error "USE_MMAP is incompatible with the obfuscation transform in this JDK. See dl_apply() in zip_util.c and revisit the transform before enabling it."
-#endif
-
 /*
  * Header signatures
  */

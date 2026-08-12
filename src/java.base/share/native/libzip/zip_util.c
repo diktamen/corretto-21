@@ -51,14 +51,20 @@
 #define mmap64 mmap
 #endif
 
-/* USE_MMAP means mmap the CEN & ENDHDR part of the zip file. */
+/* USE_MMAP means mmap the CEN & ENDHDR part of the zip file. Set on every unix
+ * platform (CoreLibraries.gmk passes -DUSE_MMAP via CFLAGS_unix), so this path
+ * is live on macOS and Linux and only absent on Windows.
+ *
+ * An mmapped central directory bypasses the read layer where the obfuscation
+ * transform is undone, so readCEN() would hand back still-transformed bytes.
+ * Rather than XOR the mapping (which would need a private, writable mapping and
+ * lose the footprint benefit that is the whole point of mapping the CEN), the
+ * mapping is simply skipped for transformed archives: ZIP_Put_In_Cache0() clears
+ * zip->usemmap when it detects one, and every mmap path here is gated on that
+ * flag, so those archives take the ordinary read path. Plain archives -- the
+ * overwhelmingly common case -- keep mapping the CEN exactly as before. */
 #ifdef USE_MMAP
 #include <sys/mman.h>
-/* The in-house obfuscation transform (dl_apply() below) is undone in the read
- * layer, which an mmapped CEN bypasses entirely: readCEN() would hand back
- * still-transformed bytes. USE_MMAP is not enabled by this build, so rather
- * than carry an untested second code path, fail loudly if that ever changes. */
-#error "USE_MMAP is incompatible with the obfuscation transform in this JDK. See dl_apply() in zip_util.c and revisit the transform before enabling it."
 #endif
 
 #define MAXREFS 0xFFFF  /* max number of open zip file references */
@@ -1005,6 +1011,13 @@ ZIP_Put_In_Cache0(const char *name, ZFILE zfd, char **pmsg, jlong lastModified,
         zip->xored = dl_detect(errbuf, 4);
         if (zip->xored) {
             dl_apply(errbuf, 4, 0);
+#ifdef USE_MMAP
+            /* An mmapped CEN would bypass the read layer that undoes the
+             * transform. Fall back to reading the CEN for this archive; every
+             * mmap path is gated on this flag. Must happen before readCEN(),
+             * which is the first consumer. */
+            zip->usemmap = JNI_FALSE;
+#endif
         }
         zip->locsig = LOCSIG_AT(errbuf) ? JNI_TRUE : JNI_FALSE;
     }

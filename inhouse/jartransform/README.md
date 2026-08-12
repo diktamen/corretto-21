@@ -107,11 +107,25 @@ The read functions are the only hot spots; keep the transform confined to them.
 
 ### USE_MMAP
 
-`libzip` has a disabled `USE_MMAP` path that maps the central directory
-instead of reading it, which would bypass the transform and hand back
-still-transformed bytes. It is not enabled by this build, and both
-`zip_util.c` and `zip_util.h` now `#error` if it ever is. If you need it,
-revisit the transform first.
+`libzip` maps the central directory instead of reading it when `USE_MMAP` is
+defined. `CoreLibraries.gmk` passes `-DUSE_MMAP` via `CFLAGS_unix`, so **this
+path is live on macOS and Linux** and absent only on Windows — a Windows-only
+build will not exercise it.
+
+An mmapped CEN bypasses the read layer where the transform is undone.
+`ZIP_Put_In_Cache0` therefore clears `zip->usemmap` when it detects a
+transformed archive, and since every mmap path is gated on that flag, those
+archives take the ordinary read path. Plain archives still map the CEN exactly
+as before, so the footprint optimisation that mapping exists for is retained
+for the common case.
+
+The cost for a transformed archive is one `malloc` plus one read of the central
+directory — which is what Windows already does for every archive.
+
+The alternative would be to XOR the mapping itself, which needs a private
+writable mapping (`MAP_PRIVATE | PROT_WRITE`) and gives up the shared-page
+footprint benefit that motivated mapping the CEN in the first place. Not worth
+it for the artifacts this applies to.
 
 ## What is intentionally not covered
 
